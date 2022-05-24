@@ -227,7 +227,13 @@ private:
 
         String getTitle() const override
         {
-            return itemComponent.item.text;
+            auto res = itemComponent.item.text + (itemComponent.item.isTicked ? " (Ticked)" : "");
+#if JUCE_MAC
+            if (hasActiveSubMenu(itemComponent.item))
+                res += " (has SubMenu)";
+#endif
+
+            return res;
         }
 
         AccessibleState getCurrentState() const override
@@ -652,6 +658,14 @@ struct MenuWindow  : public Component
         }
         else if (key.isKeyCode (KeyPress::returnKey) || key.isKeyCode (KeyPress::spaceKey))
         {
+            // SURGE FIX: Use 'return key' to open submenus
+            if (showSubMenuFor (currentChild))
+            {
+                if (isSubMenuVisible())
+                    activeSubMenu->selectNextItem (MenuSelectionDirection::current);
+            }
+            else
+            // END SURGE FIX:
             triggerCurrentlyHighlightedItem();
         }
         else if (key.isKeyCode (KeyPress::escapeKey))
