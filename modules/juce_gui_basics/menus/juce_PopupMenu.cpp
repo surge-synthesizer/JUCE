@@ -23,6 +23,8 @@
   ==============================================================================
 */
 
+// clang-format off
+
 namespace juce
 {
 
@@ -181,7 +183,9 @@ struct ItemComponent  : public Component
 
     static bool isAccessibilityHandlerRequired (const PopupMenu::Item& item)
     {
-        return item.isSectionHeader || hasActiveSubMenu (item) || canBeTriggered (item);
+        return item.isSectionHeader || hasActiveSubMenu (item) || canBeTriggered (item) ||
+                // SURGE FIX : if the custom component is accessible!
+                (item.customComponent != nullptr && item.customComponent->isAccessible());
     }
 
     PopupMenu::Item item;
@@ -202,7 +206,13 @@ private:
 
         String getTitle() const override
         {
-            return itemComponent.item.text;
+            auto res = itemComponent.item.text + (itemComponent.item.isTicked ? " (Checked)" : "");
+#if JUCE_MAC
+            if (hasActiveSubMenu(itemComponent.item))
+                res += " (has SubMenu)";
+#endif
+
+            return res;
         }
 
         AccessibleState getCurrentState() const override
@@ -635,7 +645,32 @@ struct MenuWindow  : public Component
         }
         else if (key.isKeyCode (KeyPress::returnKey) || key.isKeyCode (KeyPress::spaceKey))
         {
-            triggerCurrentlyHighlightedItem();
+            // SURGE FIX: Use 'return key' to open submenus
+            if (showSubMenuFor (currentChild))
+            {
+                if (isSubMenuVisible())
+                    activeSubMenu->selectNextItem (MenuSelectionDirection::current);
+            }
+            // END SURGE FIX:
+            else
+            {
+                // SURGE FIX : if I have a custom component try its keyPressed
+                if (currentChild && currentChild->item.customComponent != nullptr)
+                {
+                    if (currentChild->item.customComponent->keyPressed(key))
+                    {
+                    }
+                    else
+                    {
+                        triggerCurrentlyHighlightedItem();
+                    }
+                }
+                // END SURGE FIX
+                else
+                {
+                   triggerCurrentlyHighlightedItem();
+                }
+            }
         }
         else if (key.isKeyCode (KeyPress::escapeKey))
         {
@@ -1251,7 +1286,12 @@ struct MenuWindow  : public Component
 
             if (auto* mic = items.getUnchecked ((start + items.size()) % items.size()))
             {
-                if (canBeTriggered (mic->item) || hasActiveSubMenu (mic->item))
+                if (canBeTriggered (mic->item) || hasActiveSubMenu (mic->item) ||
+                    // SURGE FIX: You can select accessible menu custom components
+                    (mic->item.customComponent != nullptr &&
+                     mic->item.customComponent->isAccessible())
+                    // END SURGE FIX
+                )
                 {
                     setCurrentlyHighlightedChild (mic);
                     return;
