@@ -227,7 +227,7 @@ private:
 
         String getTitle() const override
         {
-            auto res = itemComponent.item.text + (itemComponent.item.isTicked ? " (Ticked)" : "");
+            auto res = itemComponent.item.text + (itemComponent.item.isTicked ? " (Checked)" : "");
 #if JUCE_MAC
             if (hasActiveSubMenu(itemComponent.item))
                 res += " (has SubMenu)";
