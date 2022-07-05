@@ -672,7 +672,7 @@ struct MenuWindow  : public Component
             else
             {
                 // SURGE FIX : if I have a custom component try its keyPressed
-                if (currentChild->item.customComponent != nullptr)
+                if (currentChild && currentChild->item.customComponent != nullptr)
                 {
                     if (currentChild->item.customComponent->keyPressed(key))
                     {
