@@ -58,7 +58,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 
-#if defined(_M_X64) || defined(__amd64__) || defined(__SSE2__) || (defined(_M_IX86_FP) && _M_IX86_FP == 2) || defined(__riscv) || defined(__EMSCRIPTEN__)
+#if defined(_M_X64) || defined(__amd64__) || defined(__SSE2__) || (defined(_M_IX86_FP) && _M_IX86_FP == 2) || defined(__EMSCRIPTEN__)
 
  #if defined(_M_X64) || defined(__amd64__)
   #ifndef __SSE2__
@@ -81,6 +81,20 @@
  #endif
 
  #include <arm_neon.h>
+
+#elif defined(__riscv)
+
+ #ifndef JUCE_USE_SIMD
+  #define JUCE_USE_SIMD 1
+ #endif
+
+ #if JUCE_USE_SIMD
+  #ifndef SIMDE_ENABLE_NATIVE_ALIASES
+   #define SIMDE_ENABLE_NATIVE_ALIASES
+  #endif
+ #endif
+
+ #include "simde/x86/sse2.h"
 
 #else
 
