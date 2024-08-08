@@ -179,8 +179,8 @@ struct LuaTokeniserFunctions
             CppTokeniserFunctions::skipIfNextCharMatches (source, '=');
             return LuaTokeniser::tokenType_operator;
 
-        case '?':
-        case '~':
+        case '?':   case '#':
+        case '~':   case '/':
             source.skip();
             return LuaTokeniser::tokenType_operator;
 
