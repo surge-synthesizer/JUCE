@@ -1581,8 +1581,27 @@ void TextEditor::mouseDown (const MouseEvent& e)
             addPopupMenuItems (m, &e);
 
             menuActive = true;
-
-            m.showMenuAsync (PopupMenu::Options().withTargetComponent (this).withMousePosition(),
+	    // SURGE PATCH
+            // Walk up the parent chain looking for a component marked with the
+            // "SSTPopupAnchor" property. If found, target that component so the
+            // popup inherits its scale (typically the AudioProcessorEditor's
+            // host scale factor) without any UI-zoom transform applied below it.
+            // If no anchor is found, fall back to the default JUCE behaviour of
+            // targeting this TextEditor. See surge-synthesizer/surge#8319.
+            juce::Component *menuTarget = nullptr;
+            for (auto *c = static_cast<juce::Component *>(this); c != nullptr;
+                 c = c->getParentComponent())
+            {
+                if ((bool)c->getProperties().getWithDefault("SSTPopupAnchor", false))
+                {
+                    menuTarget = c;
+                    break;
+                }
+            }
+            if (menuTarget == nullptr)
+                menuTarget = this;
+            // END SURGE PATCH
+            m.showMenuAsync (PopupMenu::Options().withTargetComponent (menuTarget).withMousePosition(),
                              [safeThis = SafePointer { this }] (int menuResult)
                              {
                                  if (auto* editor = safeThis.getComponent())
