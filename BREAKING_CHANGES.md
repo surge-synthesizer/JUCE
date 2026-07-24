@@ -1,5 +1,562 @@
 # JUCE breaking changes
 
+# develop
+
+## Change
+
+The AudioDeviceSelectorComponent::getMidiInputSelectorListBox function has been
+removed.
+
+**Possible Issues**
+
+Code using the removed function will fail to compile.
+
+**Workaround**
+
+There is no workaround.
+
+**Rationale**
+
+Prior to this change the MidiInputSelectorListBox was not accessible when using
+screen reader software. Even if we reworked the component and kept the ListBox
+base class, it would've been a poor fit conceptually for the MidiInputSelector,
+and it would have made the interaction with screen readers unnecessarily
+complex. Hence the ListBox base class was removed, and it's no longer possible
+to return a ListBox pointer to the new MidiInputSelector object.
+
+
+# Version 9.0.1
+
+## Change
+
+OpenGLImageType::create() now honours a request for an Image::SingleChannel
+image. Previously the requested format was ignored, and the returned image was
+always an Image::ARGB image backed by an OpenGL framebuffer.
+
+**Possible Issues**
+
+OpenGLImageType::getFrameBufferFrom() returns nullptr for single channel
+images, where it previously returned a valid framebuffer. Such images also
+report Image::SingleChannel rather than Image::ARGB from Image::getFormat().
+
+**Workaround**
+
+Request an Image::ARGB image explicitly if a framebuffer-backed image is
+required.
+
+**Rationale**
+
+The format requested when creating an image was previously ignored, so an image
+could report a different format to the one that was asked for. This caused
+rendering issues in places where a real single channel image was needed, and
+OpenGLImageType was the only JUCE image type that did not produce a real single
+channel format.
+
+
+## Change
+
+OpenGLContext::setImageCacheSize() now interprets its argument as a number of
+bytes, as documentated. Previously the value was compared against a pixel count,
+so the effective cache was four times larger than requested. The default cache
+size has been raised from 8 MB to 32 MB so that the default behaviour is
+unchanged.
+
+**Possible Issues**
+
+Code calling setImageCacheSize() with an explicit value will end up with an
+image cache four times smaller than before.
+
+**Workaround**
+
+Multiply the previously-passed value by four.
+
+**Rationale**
+
+The documented contract was expressed in bytes, but the implementation applied
+the value as a number of pixels.
+
+
+## Change
+
+zlib, libjpeg, libpng, and libflac are now built in C language mode, instead
+of as C++.
+
+**Possible Issues**
+
+Symbols in these libraries are no longer wrapped in C++ namespaces. If JUCE is
+linked into a binary that separately includes/links zlib, libjpeg, libpng,
+and/or libflac, then the internal symbols in JUCE may conflict with the symbols
+from the external copy of the library. This will result in ODR violations, and
+potentially linker errors.
+
+**Workaround**
+
+If your project already includes external copies of these libraries, set the
+preprocessor definitions JUCE_INCLUDE_ZLIB_CODE, JUCE_INCLUDE_JPEGLIB_CODE,
+JUCE_INCLUDE_PNGLIB_CODE, and/or JUCE_INCLUDE_FLAC_CODE to 0 in order to
+disable the copies bundled in JUCE. You may also set the definitions
+JUCE_ZLIB_INCLUDE_PATH, JUCE_JPEGLIB_INCLUDE_PATH, JUCE_PNGLIB_INCLUDE_PATH,
+and/or JUCE_FLAC_INCLUDE_PATH to set custom include paths for the library
+headers.
+
+**Rationale**
+
+Building these libraries as C code means that the copies vendored by JUCE
+require fewer intrusive changes. Building them as C++ historically required
+internal changes due to (for example) C++'s stricter type-checking rules.
+Building as C should allow for quicker, smoother upgrades of vendored
+dependencies in the future. Another consideration is that the C language has
+different semantics to C++ in some respects, so building as C is more likely to
+produce a binary that has the behaviour intended by the authors.
+
+
+## Change
+
+The WebBrowserComponent native integrations package location changed from
+modules/juce_gui_extra/native/javascript to
+modules/juce_gui_extra/native/typescript/webview-interop.
+
+**Possible Issues**
+
+Applications linking directly to the original in-source package location will
+fail to load the library.
+
+**Workaround**
+
+The package location should be upgraded to reflect the new in-source location.
+Alternatively, projects using a package manager can use the
+@juce-framework/webview package from npm.
+
+Javascript projects relying on the original index.js file can directly import
+webview-interop/dist/index.js instead.
+
+**Rationale**
+
+The WebBrowserComponent native integrations package has been translated to
+TypeScript and prepared to be published as a public npm package. This provides
+type information for projects consuming this package, but it imposes new
+requirements on the directory structure.
+
+
+# Version 9.0.0
+
+## Change
+
+Multi-touch is now disabled on Windows by default.
+
+**Possible Issues**
+
+Applications that rely on multi-touch input on Windows will no longer receive
+multi-touch events.
+
+**Workaround**
+
+To explicitly enable multi-touch support on Windows, call
+`TopLevelWindow::setUsingWindowsMultiTouch (true)` in desktop applications, or
+override `PluginEditor::usesWindowsMultiTouch()` in plugins and return `true`.
+
+**Rationale**
+
+Enabling multi-touch on Windows means the app cannot respond to built-in
+gestures, such as pinch-to-zoom. This is likely to be an unwanted default. The
+reason is that if `registerTouchWindow()` is called for an HWND its
+`DefWindowProc` will no longer emit gesture events. This means that `WM_GESTURE`
+messages aren't sent, and no callbacks will be made to
+e.g. `Component::mouseMagnify()`.
+
+
+## Change
+
+The function Drawable::createFromSVG (const XmlElement& svgDocument) has been
+removed.
+
+**Possible Issues**
+
+Code that calls the function will fail to compile.
+
+**Workaround**
+
+Use the createFromSVGFile() or createFromSVGString() functions instead.
+
+**Rationale**
+
+The SVG parsing features in JUCE have been fundamentally reworked, and they now
+depend on the lunasvg library. Lunasvg does its own XML parsing, and is not
+compatible with the juce::XmlElement type.
+
+
+## Change
+
+The return types of `DrawableShape::getStrokeType()` and
+`DrawableShape::getDashLengths()` changed from `const PathStrokeType&` to
+`PathStrokeType`, and from `const Array<float>&` to `Span<const float>`
+respectively. The parameter type to
+`DrawableShape::setDashLengths (const Array<float>&)` was changed to
+`Span<const float>`.
+
+**Possible Issues**
+
+Code that calls these functions may fail to compile.
+
+**Workaround**
+
+It should be easy to adjust the calling code to handle the new return and
+parameter types.
+
+**Rationale**
+
+The stroke options were extended and generalised to text rendering. The new
+types are a better fit for the adjusted design.
+
+
+## Change
+
+The `Drawable` class no longer inherits from `Component`.
+
+**Possible Issues**
+
+Code that depended on `Drawable` objects inheriting from `Component` will fail
+to compile.
+
+**Workaround**
+
+Affected code can use the new `DrawableComponent` class to wrap `Drawable`
+objects in a `Component` if necessary. There are many examples in the JUCE
+codebase where this transition has already been made.
+
+**Rationale**
+
+This change prepares the way for moving the `Drawable` classes together with the
+SVG parser into the juce_graphics module. This allows us to avoid a dependency
+on the heavyweight `Component` class and juce_gui_basics module, and enables
+using the `Drawable` classes and SVG parser in headless use-cases.
+
+
+## Change
+
+JUCE now uses EGL, rather than GLX, to create an OpenGL context on Linux.
+
+**Possible Issues**
+
+EGL is a new dependency, and it may need to be added to your operating system.
+
+**Workaround**
+
+Install the libegl-dev package (Debian) or the equivalent for your operating
+system.
+
+**Rationale**
+
+Using EGL, rather than GLX, broadens the range of hardware we can deploy JUCE
+on.
+
+
+# Version 8.0.13
+
+## Change
+
+72e1ba6a80bb163633622ee9694856cacc24e5b9 made AudioProcessor::createEditor()
+private. It also incorrectly renamed createEditorIfNeeded() to
+createEditorIfNecessary(). The old naming has now be reinstated.
+
+**Possible Issues**
+
+Code that calls createEditor() directly will fail to compile.
+
+**Workaround**
+
+To create an editor for an AudioProcessor, call
+AudioProcessor::createEditorAndMakeActive().
+
+**Rationale**
+
+In order for AudioProcessor::getActiveEditor() to return the correct result,
+the AudioProcessor must store a pointer to the newly-created editor after
+createEditor() returns. Allowing users to call createEditor() directly would
+prevent the internal editor pointer from being updated, breaking the behaviour
+of getActiveEditor().
+
+
+## Change
+
+The value returned by AlertWindow::show() has been changed so that it is
+consistent between native and non-native windows. The documentation has been
+updated to describe the new behaviour.
+
+**Possible Issues**
+
+Code that called this function to display a native alert window will behave
+differently.
+
+**Workaround**
+
+Code should be updated to respect the new return codes. See the documentation
+for an explanation of the possible return codes.
+
+**Rationale**
+
+Making the behaviour of this function consistent between native and non-native
+dialogs will make it easier to write bug-free code, especially in programs that
+might switch between dialog window types.
+
+
+## Change
+
+AudioPluginInstance::getPlatformSpecificData() has been removed.
+
+**Possible Issues**
+
+Code that calls this function will fail to compile.
+
+**Workaround**
+
+Use the new member functions of AudioPluginInstance - getVSTClient(),
+getVST3Client(), getAudioUnitClient(), and getARAClient() - to retrieve data
+relating to the underlying implementation.
+
+**Rationale**
+
+This change allows calling code to be more self-documenting and type-safe.
+
+
+## Change
+
+The following functions have new signatures:
+- VSTPluginFormatHeadless::loadFromFXBFile()
+- VSTPluginFormatHeadless::setChunkData()
+- VSTPluginFormatHeadless::setExtraFunctions()
+
+**Possible Issues**
+
+Code that calls these functions will fail to compile.
+
+**Workaround**
+
+Instead of passing a separate data pointer and size, pass a Span of bytes to
+loadFromFXBFile() and setChunkData().
+
+Pass a unique_ptr<ExtraFunctions> to setExtraFunctions(). You may wish to use
+rawToUniquePtr() to convert a raw pointer to a unique_ptr.
+
+**Rationale**
+
+These changes result in interfaces that are more self-documenting.
+
+
+## Change
+
+The following functions have been removed:
+- VSTPluginFormatHeadless::getVSTXML()
+- VSTPluginFormatHeadless::loadFromFXBFile()
+- VSTPluginFormatHeadless::saveToFXBFile()
+- VSTPluginFormatHeadless::getChunkData()
+- VSTPluginFormatHeadless::setChunkData()
+- VSTPluginFormatHeadless::setExtraFunctions()
+- VSTPluginFormatHeadless::dispatcher()
+- VST3PluginFormatHeadless::setStateFromVSTPresetFile()
+
+**Possible Issues**
+
+Code that references these functions will fail to compile.
+
+**Workaround**
+
+Retrieve a client interface from an AudioPluginInstance by calling
+AudioPluginClient::getVSTClient() or AudioPluginClient::getVST3Client(), then
+call the appropriate member function on the client interface.
+
+**Rationale**
+
+This approach leads to more intuitive code. It's no longer necessary to call a
+static member function of the plugin format in order to interact with
+format-specific aspects of a particular plugin instance.
+
+
+## Change
+
+The ExtensionsVisitor type has been removed.
+
+**Possible Issues**
+
+Code that references this type, e.g. by deriving from it, will fail to compile.
+
+**Workaround**
+
+Use the new member functions of AudioPluginInstance - getVSTClient(),
+getVST3Client(), getAudioUnitClient(), and getARAClient() - to interact with
+format-specific aspects of the wrapped plugin.
+
+**Rationale**
+
+The visitor pattern results in very boilerplate-heavy code, both for
+implementers and for users. The new API is much more lightweight. Additionally,
+the ExtensionsVisitor API was intended for advanced users who should be able to
+migrate to a new API without much difficulty.
+
+
+## Change
+
+The following member functions of Typeface have been removed:
+- Typeface::getStringWidth()
+- Typeface::getGlyphPositions()
+- Typeface::getEdgeTableForGlyph()
+- Typeface::applyVerticalHintingTransform()
+
+The following member functions of Font have been removed:
+- Font::getStringWidth()
+- Font::getStringWidthFloat()
+
+The signatures of the following functions have changed, removing the
+TypefaceMetricsKind argument:
+- Typeface::getOutlineForGlyph()
+- Typeface::getGlyphBounds()
+- Typeface::getLayersForGlyph()
+
+**Possible Issues**
+
+Code that uses these functions will fail to compile.
+
+**Workaround**
+
+Use GlyphArrangement::getStringWidth() or TextLayout::getStringWidth() to find
+the width of a string taking font-fallback and shaping into account.
+
+To find individual glyph positions, lay out the string using GlyphArrangement
+or TextLayout, then use the positions provided by
+GlyphArrangement::PositionedGlyph and/or TextLayout::Glyph.
+
+Use getLayersForGlyph() instead of getEdgeTableForGlyph() when rendering
+individual glyphs.
+
+Where function signatures have changed, those functions now always normalise
+their results to a point size of 1.0. If necessary, you can use
+Typeface::getMetrics() to find the appropriate scale factor to convert to "JUCE
+height" using portable or legacy metrics.
+
+**Rationale**
+
+Removing deprecated functions simplifies the framework and reduces ongoing
+maintenance costs.
+
+
+## Change
+
+The overloads of Displays::logicalToPhysical and Displays::physicalToLogical
+that take a Point<int> have been deprecated.
+
+**Possible Issues**
+
+Code that uses the deprecated functions may emit a warning at compile time.
+
+**Workaround**
+
+Use the new Point<float> overloads.
+
+**Rationale**
+
+When working in logical coordinate space, rounding coordinates to integer
+values loses precision and can be error-prone. This is especially the case for
+mouse coordinates: rounding the mouse position to logical coordinates and then
+back to physical can produce a different result, that might even lie outside
+the original display. This deprecation is intended to encourage users to avoid
+rounding logical coordinates unnecessarily.
+
+
+## Change
+
+The overload of Displays::getDisplayForPoint that takes a Point<int> has been
+deprecated.
+
+**Possible Issues**
+
+Code that uses the deprecated function may emit a warning at compile time.
+
+**Workaround**
+
+Use the new Point<float> overload.
+
+**Rationale**
+
+When working in logical coordinate space, rounding coordinates to integer
+values loses precision and can be error-prone. This is especially the case for
+mouse coordinates: rounding the mouse position to logical coordinates and then
+back to physical can produce a different result, that might even lie outside
+the original display. This deprecation is intended to encourage users to avoid
+rounding logical coordinates unnecessarily.
+
+
+## Change
+
+The totalArea, userArea, and topLeftPhysical data members of Displays::Display
+have been deprecated.
+
+**Possible Issues**
+
+Code that uses the deprecated data members may emit a warning at compile time.
+
+**Workaround**
+
+Use the new logicalBounds, userBounds, and physicalBounds data members,
+respectively.
+
+**Rationale**
+
+When a display is using a fractional scale, or when a fractional global scale
+is set in JUCE, the physical bounds may not be representable using integers in
+logical coordinate space, so the old totalArea field was sometimes rounded to
+the closest integer values. This also made it impossible to reconstruct the
+actual physical bounds of the display, since multiplying the rounded logical
+bounds by the scale factor would produce an incorrect result.
+
+The Displays struct now provides the exact physical size of the display, along
+with more precise representations of the logical and user bounds.
+
+
+## Change
+
+A new type member ARAConfigurationType has been added to
+ARADemoPluginDocumentControllerSpecialisation.
+
+**Possible Issues**
+
+In the unlikely case than an ARA document controller implementation previously
+added an ARAConfigurationType member to
+ARADemoPluginDocumentControllerSpecialisation, the code will fail to compile.
+
+**Workaround**
+
+The previous ARAConfigurationType member must be renamed.
+ARADemoPluginDocumentControllerSpecialisation::ARAConfigurationType from now on
+must be a type that has a static member function
+`ARA::ARAAPIGeneration getHighestSupportedApiGeneration()`.
+
+**Rationale**
+
+Supporting the partial persistency feature of ARA 2.3.0 required the addition
+of the new type member.
+
+
+## Change
+
+The ARA SDK required by JUCE has been updated to version 2.3.0.
+
+**Possible Issues**
+
+ARA Plugin builds using earlier versions of the ARA SDK will fail to compile.
+Additionally, the new ARA SDK version replaces the ARA::ChannelArrangement type
+with ARA::ChannelFormat.
+
+**Workaround**
+
+The ARA SDK configured in JUCE must be updated to version 2.3.0. If the plugin
+code depended on the ARA::ChannelArrangement type, it must use
+ARA::ChannelFormat in its stead.
+
+**Rationale**
+
+Version 2.3.0 is the latest official release of the ARA SDK.
+
+
 # Version 8.0.11
 
 ## Change
@@ -123,10 +680,10 @@ containers, and returning a FocusTraverser object created using the
 
 **Rationale**
 
-Disabled components are typically rendered in a dimmed or inactive state, but 
+Disabled components are typically rendered in a dimmed or inactive state, but
 are still prominently visible for sighted users. The old behaviour made these
-components entirely missing from the accessibility tree, making them 
-non-discoverable with screen readers. 
+components entirely missing from the accessibility tree, making them
+non-discoverable with screen readers.
 
 This was in contrast to the behaviour of native OS components, that are still
 accessible using screen readers, but their disabled/dimmed state is also
