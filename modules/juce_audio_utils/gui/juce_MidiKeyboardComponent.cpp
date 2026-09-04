@@ -279,8 +279,15 @@ bool MidiKeyboardComponent::keyStateChanged (bool /*isKeyDown*/)
                 keyPressUsed = true;
             }
         }
-        else
+        else if (! KeyPress::isKeyCurrentlyDown (keyPresses.getReference (i).getKeyCode()))
         {
+            // Only release when the key is physically up. KeyPress::isCurrentlyDown above also
+            // compares the live modifier flags against those stored on the KeyPress, which is what
+            // we want for note on, so that a shortcut such as Ctrl+S does not also play a note. It
+            // is not what we want for note off though: key mappings are typically bound without
+            // modifiers, so merely pressing or releasing Ctrl, Shift or Alt would otherwise make
+            // every held key look released and cut the notes out from under the player. Asking for
+            // the raw physical key state here keeps held notes sounding.
             if (keysPressed[note])
             {
                 keysPressed.clearBit (note);
