@@ -2386,6 +2386,11 @@ bool JUCE_CALLTYPE PopupMenu::dismissAllActiveMenus()
     return numWindows > 0;
 }
 
+bool JUCE_CALLTYPE PopupMenu::isAnyMenuActive()
+{
+    return ! HelperClasses::MenuWindow::getActiveWindows().isEmpty();
+}
+
 //==============================================================================
 int PopupMenu::getNumItems() const noexcept
 {

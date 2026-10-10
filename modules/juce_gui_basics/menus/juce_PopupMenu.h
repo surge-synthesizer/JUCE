@@ -765,6 +765,14 @@ public:
     */
     static bool JUCE_CALLTYPE dismissAllActiveMenus();
 
+    /** Returns true if any menu is currently open.
+
+        A menu window takes keyboard events without taking the keyboard focus, so opening one
+        is not observable through the focus system. This lets a component tell that case apart
+        from other modal components, which isCurrentlyBlockedByAnotherModalComponent() cannot.
+    */
+    static bool JUCE_CALLTYPE isAnyMenuActive();
+
 
     //==============================================================================
     /** Specifies a look-and-feel for the menu and any sub-menus that it has.
