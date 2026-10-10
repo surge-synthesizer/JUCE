@@ -251,6 +251,14 @@ public:
     /** @internal */
     void colourChanged() override;
 
+protected:
+    //==============================================================================
+    /** Releases every key the component currently believes is held, whether it was played by
+        a mouse or by a mapped key press. A subclass which does not rely on keyboard focus has
+        no focusLost() to reset it, so it needs to be able to ask for this itself.
+    */
+    void resetAnyKeysInUse();
+
 private:
     //==============================================================================
     void drawKeyboardBackground (Graphics& g, Rectangle<float> area) override final;
@@ -261,7 +269,6 @@ private:
     void handleNoteOff (MidiKeyboardState*, int, int, float) override;
 
     //==============================================================================
-    void resetAnyKeysInUse();
     void updateNoteUnderMouse (Point<float>, bool isDown, int fingerNum);
     void updateNoteUnderMouse (const MouseEvent&, bool isDown);
     void repaintNote (int midiNoteNumber);
