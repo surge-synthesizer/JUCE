@@ -1914,6 +1914,11 @@ private:
 
             const auto idToUse = parameter != nullptr ? processor.getVSTParamIDForIndex (parameter->getParameterIndex()) : 0;
             VSTComSmartPtr menu { handler->createContextMenu (view, &idToUse), IncrementRef::no };
+
+            // some hosts expose IComponentHandler3 without implementing it
+            if (menu == nullptr)
+                return {};
+
             return std::make_unique<EditorContextMenu> (editor, menu);
         }
 
